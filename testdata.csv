@@ -1,0 +1,4 @@
+CustomerId,CustomerName,Country,PinCode,Email
+10001,sai,India,110001,abc@gmail.com
+10002,ram,USA,220002,def@gmail.com
+10003,John,France,330003,ghi@gmail.com
