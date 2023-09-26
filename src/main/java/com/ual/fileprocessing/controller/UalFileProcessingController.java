@@ -3,6 +3,10 @@ package com.ual.fileprocessing.controller;
 import au.com.bytecode.opencsv.CSVReader;
 import com.ual.fileprocessing.service.UALService;
 import org.apache.commons.io.FileUtils;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -23,12 +27,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/process")
-
 public class UalFileProcessingController {
 
     Logger LOGGER = LoggerFactory.getLogger(UalFileProcessingController.class);
@@ -51,15 +55,15 @@ public class UalFileProcessingController {
         FileOutputStream fileOutputStream = new FileOutputStream(convertedFile);
         fileOutputStream.write(file.getBytes());
         fileOutputStream.close();
-        try(BufferedReader bufferedReader = new BufferedReader(new FileReader(convertedFile))) {
+        try (BufferedReader bufferedReader = new BufferedReader(new FileReader(convertedFile))) {
             String currentLine;
 
-            while((currentLine=bufferedReader.readLine())!=null){
+            while ((currentLine = bufferedReader.readLine()) != null) {
                 results.add(currentLine);
             }
             ualService.processSpringShotExcel(results);
         } catch (IOException e) {
-            LOGGER.error("Failed to process Spring shot Excel file with an Exception "+e.getMessage());
+            LOGGER.error("Failed to process Spring shot Excel file with an Exception " + e.getMessage());
             String errorMessage = e.getLocalizedMessage();
         }
         return ResponseEntity.ok("Processed Successfully");
@@ -73,21 +77,34 @@ public class UalFileProcessingController {
     @PostMapping("/avtechexcel")
     public ResponseEntity<String> processAvTechShotExcel(@RequestParam(value = "file", required = true) MultipartFile file) {
 
+        boolean isProcessingFailed= false;
         LOGGER.info("Started processing AV Tech  Excel file Upload");
-        try {
-            XSSFWorkbook workbook = new XSSFWorkbook(file.getInputStream());
-            XSSFSheet sheet = workbook.getSheetAt(0);
+        try (XSSFWorkbook workbook = new XSSFWorkbook(file.getInputStream())){
+            //XSSFWorkbook workbook = new XSSFWorkbook(file.getInputStream());
+            //XSSFSheet sheet = workbook.getSheetAt(0);
 
-            for(int i=0; i<sheet.getPhysicalNumberOfRows();i++) {
-                XSSFRow row = sheet.getRow(i);
-                for(int j=0;j<row.getPhysicalNumberOfCells();j++) {
-                    LOGGER.info(row.getCell(j) +" ");
+                int  numberOfSheet = workbook.getNumberOfSheets();
+            for (int i = 0; i < numberOfSheet; i++) {
+                Sheet sheet = workbook.getSheetAt(i);
+                System.out.println("=> " + sheet.getSheetName());
+                DataFormatter dataFormatter = new DataFormatter();
+                System.out.println("Iterating over Rows and Columns using Iterator");
+                Iterator<Row> rowIterator = sheet.rowIterator();
+                while (rowIterator.hasNext()) {
+                    Row row = rowIterator.next();
+                    Iterator<Cell> cellIterator = row.cellIterator();
+                    while (cellIterator.hasNext()) {
+                        Cell cell = cellIterator.next();
+                        String cellValue = dataFormatter.formatCellValue(cell);
+                        System.out.print(cellValue + "\t");
+                    }
                 }
             }
 
         } catch (IOException e) {
-            LOGGER.error("Failed to process AV Tech Excel file with an Exception "+e.getMessage());
+            LOGGER.error("Failed to process AV Tech Excel file with an Exception " + e.getMessage());
             String errorMessage = e.getLocalizedMessage();
+            return ResponseEntity.badRequest().body(errorMessage);
         }
         return ResponseEntity.ok("Processed Successfully");
     }
@@ -106,15 +123,15 @@ public class UalFileProcessingController {
         FileOutputStream fileOutputStream = new FileOutputStream(convertedFile);
         fileOutputStream.write(file.getBytes());
         fileOutputStream.close();
-        try(CSVReader reader = new CSVReader(new FileReader(convertedFile))) {
-            String  [] currentLine;
+        try (CSVReader reader = new CSVReader(new FileReader(convertedFile))) {
+            String[] currentLine;
 
-            while((currentLine=reader.readNext())!=null){
+            while ((currentLine = reader.readNext()) != null) {
                 results.add(Arrays.toString(currentLine));
             }
             ualService.processSpringShotExcel(results);
         } catch (IOException e) {
-            LOGGER.error("Failed to process Spring shot Excel file with an Exception "+e.getMessage());
+            LOGGER.error("Failed to process Spring shot Excel file with an Exception " + e.getMessage());
             String errorMessage = e.getLocalizedMessage();
         }
 
@@ -131,9 +148,9 @@ public class UalFileProcessingController {
 
         LOGGER.info("Started processing TCH Excel file Upload");
         try {
-            File convFile = new File( file.getOriginalFilename() );
-            FileOutputStream fos = new FileOutputStream( convFile );
-            fos.write( file.getBytes() );
+            File convFile = new File(file.getOriginalFilename());
+            FileOutputStream fos = new FileOutputStream(convFile);
+            fos.write(file.getBytes());
             LOGGER.info(convFile.toString());
             fos.close();
 
@@ -142,10 +159,11 @@ public class UalFileProcessingController {
             LOGGER.info(data);
 
         } catch (IOException e) {
-            LOGGER.error("Failed to process TCH Excel file with an Exception "+e.getMessage());
+            LOGGER.error("Failed to process TCH Excel file with an Exception " + e.getMessage());
             e.printStackTrace();
             String errorMessage = e.getLocalizedMessage();
         }
         return ResponseEntity.ok("Processed Successfully");
     }
 }
+
